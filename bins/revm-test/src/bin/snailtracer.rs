@@ -28,19 +28,20 @@ pub fn run_snailtracer<const USE_GAS: bool>(contract_data: Bytes) {
 
     let mut elapsed = std::time::Duration::ZERO;
     let mut times = Vec::new();
-    for _ in 0..30 {
+    let runs = 100;
+    for _ in 0..runs {
         let timer = Instant::now();
         let (_, _) = evm.transact();
         let i = timer.elapsed();
         times.push(i);
         elapsed += i;
     }
-    println!("elapsed: {:?}", elapsed / 30);
+    println!("elapsed: {:?}", elapsed / runs);
     let mut times = times[5..].to_vec();
     times.sort();
-    for (i, time) in times.iter().rev().enumerate() {
-        println!("{i}: {time:?}");
-    }
+    // for (i, time) in times.iter().rev().enumerate() {
+    //     println!("{i}: {time:?}");
+    // }
 }
 
 fn main() {
