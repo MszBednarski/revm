@@ -19,11 +19,11 @@ impl CustomPrintTracer {
     }
 }
 
-impl<DB: Database> Inspector<DB> for CustomPrintTracer {
+impl<DB: Database, const USE_GAS: bool> Inspector<DB, USE_GAS> for CustomPrintTracer {
     fn initialize_interp(
         &mut self,
-        interp: &mut revm::Interpreter,
-        data: &mut EVMData<'_, DB>,
+        interp: &mut revm::Interpreter<USE_GAS>,
+        data: &mut EVMData<'_, DB, USE_GAS>,
         is_static: bool,
     ) -> Return {
         self.gas_inspector
@@ -35,8 +35,8 @@ impl<DB: Database> Inspector<DB> for CustomPrintTracer {
     // all other information can be obtained from interp.
     fn step(
         &mut self,
-        interp: &mut revm::Interpreter,
-        data: &mut EVMData<'_, DB>,
+        interp: &mut revm::Interpreter<USE_GAS>,
+        data: &mut EVMData<'_, DB, USE_GAS>,
         is_static: bool,
     ) -> Return {
         let opcode = interp.current_opcode();
@@ -65,8 +65,8 @@ impl<DB: Database> Inspector<DB> for CustomPrintTracer {
 
     fn step_end(
         &mut self,
-        interp: &mut revm::Interpreter,
-        data: &mut EVMData<'_, DB>,
+        interp: &mut revm::Interpreter<USE_GAS>,
+        data: &mut EVMData<'_, DB, USE_GAS>,
         is_static: bool,
         eval: revm::Return,
     ) -> Return {
@@ -76,7 +76,7 @@ impl<DB: Database> Inspector<DB> for CustomPrintTracer {
 
     fn call_end(
         &mut self,
-        data: &mut EVMData<'_, DB>,
+        data: &mut EVMData<'_, DB, USE_GAS>,
         inputs: &CallInputs,
         remaining_gas: Gas,
         ret: Return,
@@ -90,7 +90,7 @@ impl<DB: Database> Inspector<DB> for CustomPrintTracer {
 
     fn create_end(
         &mut self,
-        data: &mut EVMData<'_, DB>,
+        data: &mut EVMData<'_, DB, USE_GAS>,
         inputs: &CreateInputs,
         ret: Return,
         address: Option<H160>,
@@ -104,7 +104,7 @@ impl<DB: Database> Inspector<DB> for CustomPrintTracer {
 
     fn call(
         &mut self,
-        _data: &mut EVMData<'_, DB>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         inputs: &mut CallInputs,
         is_static: bool,
     ) -> (Return, Gas, Bytes) {
@@ -121,7 +121,7 @@ impl<DB: Database> Inspector<DB> for CustomPrintTracer {
 
     fn create(
         &mut self,
-        _data: &mut EVMData<'_, DB>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         inputs: &mut CreateInputs,
     ) -> (Return, Option<H160>, Gas, Bytes) {
         println!(

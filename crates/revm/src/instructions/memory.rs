@@ -1,7 +1,7 @@
 use crate::{interpreter::Interpreter, Return};
 use ruint::aliases::U256;
 
-pub fn mload(interp: &mut Interpreter) -> Return {
+pub fn mload<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::VERYLOW);
     pop!(interp, index);
     let index = as_usize_or_fail!(index, Return::OutOfGas);
@@ -15,7 +15,7 @@ pub fn mload(interp: &mut Interpreter) -> Return {
     Return::Continue
 }
 
-pub fn mstore(interp: &mut Interpreter) -> Return {
+pub fn mstore<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::VERYLOW);
     pop!(interp, index, value);
     let index = as_usize_or_fail!(index, Return::OutOfGas);
@@ -24,7 +24,7 @@ pub fn mstore(interp: &mut Interpreter) -> Return {
     Return::Continue
 }
 
-pub fn mstore8(interp: &mut Interpreter) -> Return {
+pub fn mstore8<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::VERYLOW);
     pop!(interp, index, value);
     let index = as_usize_or_fail!(index, Return::OutOfGas);
@@ -35,7 +35,7 @@ pub fn mstore8(interp: &mut Interpreter) -> Return {
     Return::Continue
 }
 
-pub fn msize(interp: &mut Interpreter) -> Return {
+pub fn msize<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::BASE);
     push!(interp, U256::from(interp.memory.effective_len()));
     Return::Continue

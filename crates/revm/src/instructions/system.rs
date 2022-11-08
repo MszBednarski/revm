@@ -5,7 +5,7 @@ use primitive_types::H256;
 use ruint::aliases::U256;
 use std::cmp::min;
 
-pub fn sha3(interp: &mut Interpreter) -> Return {
+pub fn sha3<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     pop!(interp, from, len);
     let len = as_usize_or_fail!(len, Return::OutOfGas);
     gas_or_fail!(interp, gas::sha3_cost(len as u64));
@@ -21,28 +21,28 @@ pub fn sha3(interp: &mut Interpreter) -> Return {
     Return::Continue
 }
 
-pub fn address(interp: &mut Interpreter) -> Return {
+pub fn address<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::BASE);
     let ret = H256::from(interp.contract.address);
     push_h256!(interp, ret);
     Return::Continue
 }
 
-pub fn caller(interp: &mut Interpreter) -> Return {
+pub fn caller<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::BASE);
     let ret = H256::from(interp.contract.caller);
     push_h256!(interp, ret);
     Return::Continue
 }
 
-pub fn codesize(interp: &mut Interpreter) -> Return {
+pub fn codesize<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::BASE);
     let size = U256::from(interp.contract.bytecode.len());
     push!(interp, size);
     Return::Continue
 }
 
-pub fn codecopy(interp: &mut Interpreter) -> Return {
+pub fn codecopy<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     pop!(interp, memory_offset, code_offset, len);
     let len = as_usize_or_fail!(len, Return::OutOfGas);
     gas_or_fail!(interp, gas::verylowcopy_cost(len as u64));
@@ -63,7 +63,7 @@ pub fn codecopy(interp: &mut Interpreter) -> Return {
     Return::Continue
 }
 
-pub fn calldataload(interp: &mut Interpreter) -> Return {
+pub fn calldataload<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::VERYLOW);
     pop!(interp, index);
     let index = as_usize_saturated!(index);
@@ -81,20 +81,20 @@ pub fn calldataload(interp: &mut Interpreter) -> Return {
     Return::Continue
 }
 
-pub fn calldatasize(interp: &mut Interpreter) -> Return {
+pub fn calldatasize<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::BASE);
     let len = U256::from(interp.contract.input.len());
     push!(interp, len);
     Return::Continue
 }
 
-pub fn callvalue(interp: &mut Interpreter) -> Return {
+pub fn callvalue<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::BASE);
     push_h256!(interp, interp.contract.value.to_be_bytes().into());
     Return::Continue
 }
 
-pub fn calldatacopy(interp: &mut Interpreter) -> Return {
+pub fn calldatacopy<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     pop!(interp, memory_offset, data_offset, len);
     let len = as_usize_or_fail!(len, Return::OutOfGas);
     gas_or_fail!(interp, gas::verylowcopy_cost(len as u64));
@@ -112,7 +112,9 @@ pub fn calldatacopy(interp: &mut Interpreter) -> Return {
     Return::Continue
 }
 
-pub fn returndatasize<SPEC: Spec>(interp: &mut Interpreter) -> Return {
+pub fn returndatasize<SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+) -> Return {
     // gas!(interp, gas::BASE);
     // EIP-211: New opcodes: RETURNDATASIZE and RETURNDATACOPY
     check!(SPEC::enabled(BYZANTIUM));
@@ -121,7 +123,9 @@ pub fn returndatasize<SPEC: Spec>(interp: &mut Interpreter) -> Return {
     Return::Continue
 }
 
-pub fn returndatacopy<SPEC: Spec>(interp: &mut Interpreter) -> Return {
+pub fn returndatacopy<SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+) -> Return {
     // EIP-211: New opcodes: RETURNDATASIZE and RETURNDATACOPY
     check!(SPEC::enabled(BYZANTIUM));
     pop!(interp, memory_offset, offset, len);
@@ -141,7 +145,7 @@ pub fn returndatacopy<SPEC: Spec>(interp: &mut Interpreter) -> Return {
     Return::Continue
 }
 
-pub fn gas(interp: &mut Interpreter) -> Return {
+pub fn gas<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::BASE);
     push!(interp, U256::from(interp.gas.remaining()));
     interp.add_next_gas_block(interp.program_counter() - 1)

@@ -11,7 +11,10 @@ use sha3::{Digest, Keccak256};
 
 use indicatif::ProgressBar;
 use primitive_types::{H160, H256};
-use revm::{db::AccountState, Bytecode, CreateScheme, Env, ExecutionResult, SpecId, TransactTo};
+use revm::{
+    db::{AccountState, CacheDB, EmptyDB},
+    Bytecode, CreateScheme, Env, ExecutionResult, SpecId, TransactTo,
+};
 use ruint::aliases::U256;
 use std::sync::atomic::Ordering;
 use walkdir::{DirEntry, WalkDir};
@@ -217,7 +220,7 @@ pub fn execute_test_suit(path: &Path, elapsed: &Arc<Mutex<Duration>>) -> Result<
                 env.tx.transact_to = to;
 
                 let mut database_cloned = database.clone();
-                let mut evm = revm::new();
+                let mut evm = revm::new::<&mut CacheDB<EmptyDB>, true>();
                 evm.database(&mut database_cloned);
                 evm.env = env.clone();
                 // do the deed

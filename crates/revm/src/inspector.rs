@@ -8,15 +8,15 @@ use crate::{
 use auto_impl::auto_impl;
 
 #[auto_impl(&mut, Box)]
-pub trait Inspector<DB: Database> {
+pub trait Inspector<DB: Database, const USE_GAS: bool> {
     /// Called Before the interpreter is initialized.
     ///
     /// If anything other than [Return::Continue] is returned then execution of the interpreter is
     /// skipped.
     fn initialize_interp(
         &mut self,
-        _interp: &mut Interpreter,
-        _data: &mut EVMData<'_, DB>,
+        _interp: &mut Interpreter<USE_GAS>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _is_static: bool,
     ) -> Return {
         Return::Continue
@@ -32,8 +32,8 @@ pub trait Inspector<DB: Database> {
     /// To get the current opcode, use `interp.current_opcode()`.
     fn step(
         &mut self,
-        _interp: &mut Interpreter,
-        _data: &mut EVMData<'_, DB>,
+        _interp: &mut Interpreter<USE_GAS>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _is_static: bool,
     ) -> Return {
         Return::Continue
@@ -42,7 +42,7 @@ pub trait Inspector<DB: Database> {
     /// Called when a log is emitted.
     fn log(
         &mut self,
-        _evm_data: &mut EVMData<'_, DB>,
+        _evm_data: &mut EVMData<'_, DB, USE_GAS>,
         _address: &H160,
         _topics: &[H256],
         _data: &Bytes,
@@ -54,8 +54,8 @@ pub trait Inspector<DB: Database> {
     /// Returning anything other than [Return::Continue] alters the execution of the interpreter.
     fn step_end(
         &mut self,
-        _interp: &mut Interpreter,
-        _data: &mut EVMData<'_, DB>,
+        _interp: &mut Interpreter<USE_GAS>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _is_static: bool,
         _eval: Return,
     ) -> Return {
@@ -67,7 +67,7 @@ pub trait Inspector<DB: Database> {
     /// Returning anything other than [Return::Continue] overrides the result of the call.
     fn call(
         &mut self,
-        _data: &mut EVMData<'_, DB>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _inputs: &mut CallInputs,
         _is_static: bool,
     ) -> (Return, Gas, Bytes) {
@@ -80,7 +80,7 @@ pub trait Inspector<DB: Database> {
     /// out)`) will alter the result of the call.
     fn call_end(
         &mut self,
-        _data: &mut EVMData<'_, DB>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _inputs: &CallInputs,
         remaining_gas: Gas,
         ret: Return,
@@ -95,7 +95,7 @@ pub trait Inspector<DB: Database> {
     /// Returning anything other than [Return::Continue] overrides the result of the creation.
     fn create(
         &mut self,
-        _data: &mut EVMData<'_, DB>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _inputs: &mut CreateInputs,
     ) -> (Return, Option<H160>, Gas, Bytes) {
         (Return::Continue, None, Gas::new(0), Bytes::default())
@@ -107,7 +107,7 @@ pub trait Inspector<DB: Database> {
     /// address, out)`) will alter the result of the create.
     fn create_end(
         &mut self,
-        _data: &mut EVMData<'_, DB>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _inputs: &CreateInputs,
         ret: Return,
         address: Option<H160>,
@@ -122,9 +122,9 @@ pub trait Inspector<DB: Database> {
 }
 
 #[derive(Clone, Copy)]
-pub struct NoOpInspector();
+pub struct NoOpInspector<const USE_GAS: bool>();
 
-impl<DB: Database> Inspector<DB> for NoOpInspector {}
+impl<DB: Database, const USE_GAS: bool> Inspector<DB, USE_GAS> for NoOpInspector<USE_GAS> {}
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct GasInspector {
@@ -144,11 +144,11 @@ impl GasInspector {
     }
 }
 
-impl<DB: Database> Inspector<DB> for GasInspector {
+impl<DB: Database, const USE_GAS: bool> Inspector<DB, USE_GAS> for GasInspector {
     fn initialize_interp(
         &mut self,
-        interp: &mut Interpreter,
-        _data: &mut EVMData<'_, DB>,
+        interp: &mut Interpreter<USE_GAS>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _is_static: bool,
     ) -> Return {
         self.full_gas_block = interp.contract.first_gas_block();
@@ -160,8 +160,8 @@ impl<DB: Database> Inspector<DB> for GasInspector {
     // all other information can be obtained from interp.
     fn step(
         &mut self,
-        interp: &mut Interpreter,
-        data: &mut EVMData<'_, DB>,
+        interp: &mut Interpreter<USE_GAS>,
+        data: &mut EVMData<'_, DB, USE_GAS>,
         _is_static: bool,
     ) -> Return {
         let op = interp.current_opcode();
@@ -186,8 +186,8 @@ impl<DB: Database> Inspector<DB> for GasInspector {
 
     fn step_end(
         &mut self,
-        interp: &mut Interpreter,
-        _data: &mut EVMData<'_, DB>,
+        interp: &mut Interpreter<USE_GAS>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _is_static: bool,
         _eval: Return,
     ) -> Return {
@@ -214,7 +214,7 @@ impl<DB: Database> Inspector<DB> for GasInspector {
 
     fn call_end(
         &mut self,
-        _data: &mut EVMData<'_, DB>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _inputs: &CallInputs,
         remaining_gas: Gas,
         ret: Return,
@@ -227,7 +227,7 @@ impl<DB: Database> Inspector<DB> for GasInspector {
 
     fn create_end(
         &mut self,
-        _data: &mut EVMData<'_, DB>,
+        _data: &mut EVMData<'_, DB, USE_GAS>,
         _inputs: &CreateInputs,
         ret: Return,
         address: Option<H160>,
@@ -257,11 +257,11 @@ mod tests {
         gas_remaining_steps: Vec<(usize, u64)>,
     }
 
-    impl<DB: Database> Inspector<DB> for StackInspector {
+    impl<DB: Database, const USE_GAS: bool> Inspector<DB, USE_GAS> for StackInspector {
         fn initialize_interp(
             &mut self,
-            interp: &mut Interpreter,
-            data: &mut EVMData<'_, DB>,
+            interp: &mut Interpreter<USE_GAS>,
+            data: &mut EVMData<'_, DB, USE_GAS>,
             is_static: bool,
         ) -> Return {
             self.gas_inspector
@@ -271,8 +271,8 @@ mod tests {
 
         fn step(
             &mut self,
-            interp: &mut Interpreter,
-            data: &mut EVMData<'_, DB>,
+            interp: &mut Interpreter<USE_GAS>,
+            data: &mut EVMData<'_, DB, USE_GAS>,
             is_static: bool,
         ) -> Return {
             self.pc = interp.program_counter();
@@ -282,7 +282,7 @@ mod tests {
 
         fn log(
             &mut self,
-            evm_data: &mut EVMData<'_, DB>,
+            evm_data: &mut EVMData<'_, DB, USE_GAS>,
             address: &H160,
             topics: &[H256],
             data: &Bytes,
@@ -292,8 +292,8 @@ mod tests {
 
         fn step_end(
             &mut self,
-            interp: &mut Interpreter,
-            data: &mut EVMData<'_, DB>,
+            interp: &mut Interpreter<USE_GAS>,
+            data: &mut EVMData<'_, DB, USE_GAS>,
             is_static: bool,
             eval: Return,
         ) -> Return {
@@ -305,7 +305,7 @@ mod tests {
 
         fn call(
             &mut self,
-            data: &mut EVMData<'_, DB>,
+            data: &mut EVMData<'_, DB, USE_GAS>,
             call: &mut CallInputs,
             is_static: bool,
         ) -> (Return, Gas, Bytes) {
@@ -316,7 +316,7 @@ mod tests {
 
         fn call_end(
             &mut self,
-            data: &mut EVMData<'_, DB>,
+            data: &mut EVMData<'_, DB, USE_GAS>,
             inputs: &CallInputs,
             remaining_gas: Gas,
             ret: Return,
@@ -330,7 +330,7 @@ mod tests {
 
         fn create(
             &mut self,
-            data: &mut EVMData<'_, DB>,
+            data: &mut EVMData<'_, DB, USE_GAS>,
             call: &mut CreateInputs,
         ) -> (Return, Option<H160>, Gas, Bytes) {
             self.gas_inspector.create(data, call);
@@ -345,7 +345,7 @@ mod tests {
 
         fn create_end(
             &mut self,
-            data: &mut EVMData<'_, DB>,
+            data: &mut EVMData<'_, DB, USE_GAS>,
             inputs: &CreateInputs,
             status: Return,
             address: Option<H160>,
@@ -377,7 +377,7 @@ mod tests {
         ]);
         let bytecode = Bytecode::new_raw(contract_data);
 
-        let mut evm = crate::new();
+        let mut evm = crate::new::<BenchmarkDB, true>();
         evm.database(BenchmarkDB::new_bytecode(bytecode.clone()));
         evm.env.tx.caller = H160::from_str("0x1000000000000000000000000000000000000000").unwrap();
         evm.env.tx.transact_to =

@@ -12,7 +12,10 @@ use core::cmp::min;
 use primitive_types::{H160, H256};
 use ruint::aliases::U256;
 
-pub fn balance<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
+pub fn balance<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    host: &mut H,
+) -> Return {
     pop_address!(interp, address);
     let ret = host.balance(address);
     if ret.is_none() {
@@ -35,7 +38,10 @@ pub fn balance<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> R
     Return::Continue
 }
 
-pub fn selfbalance<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
+pub fn selfbalance<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    host: &mut H,
+) -> Return {
     // gas!(interp, gas::LOW);
     // EIP-1884: Repricing for trie-size-dependent opcodes
     check!(SPEC::enabled(ISTANBUL));
@@ -49,7 +55,10 @@ pub fn selfbalance<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) 
     Return::Continue
 }
 
-pub fn extcodesize<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
+pub fn extcodesize<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    host: &mut H,
+) -> Return {
     pop_address!(interp, address);
     let ret = host.code(address);
     if ret.is_none() {
@@ -66,7 +75,10 @@ pub fn extcodesize<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) 
     Return::Continue
 }
 
-pub fn extcodehash<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
+pub fn extcodehash<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    host: &mut H,
+) -> Return {
     check!(SPEC::enabled(CONSTANTINOPLE)); // EIP-1052: EXTCODEHASH opcode
     pop_address!(interp, address);
     let ret = host.code_hash(address);
@@ -83,7 +95,10 @@ pub fn extcodehash<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) 
     Return::Continue
 }
 
-pub fn extcodecopy<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
+pub fn extcodecopy<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    host: &mut H,
+) -> Return {
     pop_address!(interp, address);
     pop!(interp, memory_offset, code_offset, len_u256);
 
@@ -109,7 +124,10 @@ pub fn extcodecopy<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) 
     Return::Continue
 }
 
-pub fn blockhash<H: Host>(interp: &mut Interpreter, host: &mut H) -> Return {
+pub fn blockhash<H: Host<USE_GAS>, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    host: &mut H,
+) -> Return {
     // gas!(interp, gas::BLOCKHASH);
     pop_top!(interp, number);
 
@@ -129,7 +147,10 @@ pub fn blockhash<H: Host>(interp: &mut Interpreter, host: &mut H) -> Return {
     Return::Continue
 }
 
-pub fn sload<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
+pub fn sload<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    host: &mut H,
+) -> Return {
     pop!(interp, index);
 
     let ret = host.sload(interp.contract.address, index);
@@ -142,7 +163,10 @@ pub fn sload<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Ret
     Return::Continue
 }
 
-pub fn sstore<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
+pub fn sstore<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    host: &mut H,
+) -> Return {
     check!(!SPEC::IS_STATIC_CALL);
 
     pop!(interp, index, value);
@@ -159,7 +183,11 @@ pub fn sstore<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Re
     interp.add_next_gas_block(interp.program_counter() - 1)
 }
 
-pub fn log<H: Host, SPEC: Spec>(interp: &mut Interpreter, n: u8, host: &mut H) -> Return {
+pub fn log<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    n: u8,
+    host: &mut H,
+) -> Return {
     check!(!SPEC::IS_STATIC_CALL);
 
     pop!(interp, offset, len);
@@ -187,7 +215,10 @@ pub fn log<H: Host, SPEC: Spec>(interp: &mut Interpreter, n: u8, host: &mut H) -
     Return::Continue
 }
 
-pub fn selfdestruct<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
+pub fn selfdestruct<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
+    host: &mut H,
+) -> Return {
     check!(!SPEC::IS_STATIC_CALL);
     pop_address!(interp, target);
 
@@ -206,8 +237,8 @@ pub fn selfdestruct<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H)
     Return::SelfDestruct
 }
 
-pub fn create<H: Host, SPEC: Spec>(
-    interp: &mut Interpreter,
+pub fn create<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
     is_create2: bool,
     host: &mut H,
 ) -> Return {
@@ -277,8 +308,8 @@ pub fn create<H: Host, SPEC: Spec>(
     interp.add_next_gas_block(interp.program_counter() - 1)
 }
 
-pub fn call<H: Host, SPEC: Spec>(
-    interp: &mut Interpreter,
+pub fn call<H: Host<USE_GAS>, SPEC: Spec, const USE_GAS: bool>(
+    interp: &mut Interpreter<USE_GAS>,
     scheme: CallScheme,
     host: &mut H,
 ) -> Return {

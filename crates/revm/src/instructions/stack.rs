@@ -1,11 +1,11 @@
 use crate::{interpreter::Interpreter, Return};
 
-pub fn pop(interp: &mut Interpreter) -> Return {
+pub fn pop<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::BASE);
     interp.stack.reduce_one()
 }
 
-pub fn push<const N: usize>(interp: &mut Interpreter) -> Return {
+pub fn push<const N: usize, const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::VERYLOW);
     let start = interp.instruction_pointer;
     // Safety: In Analysis we appended needed bytes for bytecode so that we are safe to just add without
@@ -17,12 +17,12 @@ pub fn push<const N: usize>(interp: &mut Interpreter) -> Return {
     ret
 }
 
-pub fn dup<const N: usize>(interp: &mut Interpreter) -> Return {
+pub fn dup<const N: usize, const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::VERYLOW);
     interp.stack.dup::<N>()
 }
 
-pub fn swap<const N: usize>(interp: &mut Interpreter) -> Return {
+pub fn swap<const N: usize, const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::VERYLOW);
     interp.stack.swap::<N>()
 }

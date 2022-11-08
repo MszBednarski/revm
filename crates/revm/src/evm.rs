@@ -25,22 +25,22 @@ use revm_precompiles::Precompiles;
 /// and `inspect_commit`
 
 #[derive(Clone)]
-pub struct EVM<DB> {
+pub struct EVM<DB, const USE_GAS: bool> {
     pub env: Env,
     pub db: Option<DB>,
 }
 
-pub fn new<DB>() -> EVM<DB> {
+pub fn new<DB, const USE_GAS: bool>() -> EVM<DB, USE_GAS> {
     EVM::new()
 }
 
-impl<DB> Default for EVM<DB> {
+impl<DB, const USE_GAS: bool> Default for EVM<DB, USE_GAS> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<DB: Database + DatabaseCommit> EVM<DB> {
+impl<DB: Database + DatabaseCommit, const USE_GAS: bool> EVM<DB, USE_GAS> {
     /// Execute transaction and apply result to database
     pub fn transact_commit(&mut self) -> ExecutionResult {
         let (exec_result, state) = self.transact();
@@ -48,19 +48,22 @@ impl<DB: Database + DatabaseCommit> EVM<DB> {
         exec_result
     }
     /// Inspect transaction and commit changes to database.
-    pub fn inspect_commit<INSP: Inspector<DB>>(&mut self, inspector: INSP) -> ExecutionResult {
+    pub fn inspect_commit<INSP: Inspector<DB, USE_GAS>>(
+        &mut self,
+        inspector: INSP,
+    ) -> ExecutionResult {
         let (exec_result, state) = self.inspect(inspector);
         self.db.as_mut().unwrap().commit(state);
         exec_result
     }
 }
 
-impl<DB: Database> EVM<DB> {
+impl<DB: Database, const USE_GAS: bool> EVM<DB, USE_GAS> {
     /// Execute transaction without writing to DB, return change state.
     pub fn transact(&mut self) -> (ExecutionResult, State) {
         if let Some(db) = self.db.as_mut() {
             let mut noop = NoOpInspector {};
-            let out = evm_inner::<DB, false>(&mut self.env, db, &mut noop).transact();
+            let out = evm_inner::<DB, false, USE_GAS>(&mut self.env, db, &mut noop).transact();
             out
         } else {
             panic!("Database needs to be set");
@@ -68,28 +71,31 @@ impl<DB: Database> EVM<DB> {
     }
 
     /// Execute transaction with given inspector, without wring to DB. Return change state.
-    pub fn inspect<INSP: Inspector<DB>>(
+    pub fn inspect<INSP: Inspector<DB, USE_GAS>>(
         &mut self,
         mut inspector: INSP,
     ) -> (ExecutionResult, State) {
         if let Some(db) = self.db.as_mut() {
-            evm_inner::<DB, true>(&mut self.env, db, &mut inspector).transact()
+            evm_inner::<DB, true, USE_GAS>(&mut self.env, db, &mut inspector).transact()
         } else {
             panic!("Database needs to be set");
         }
     }
 }
 
-impl<'a, DB: DatabaseRef> EVM<DB> {
+impl<'a, DB: DatabaseRef, const USE_GAS: bool> EVM<DB, USE_GAS> {
     /// Execute transaction without writing to DB, return change state.
     pub fn transact_ref(&self) -> (ExecutionResult, State) {
         if let Some(db) = self.db.as_ref() {
             let mut noop = NoOpInspector {};
             let mut db = RefDBWrapper::new(db);
             let db = &mut db;
-            let out =
-                evm_inner::<RefDBWrapper<DB::Error>, false>(&mut self.env.clone(), db, &mut noop)
-                    .transact();
+            let out = evm_inner::<RefDBWrapper<DB::Error>, false, USE_GAS>(
+                &mut self.env.clone(),
+                db,
+                &mut noop,
+            )
+            .transact();
             out
         } else {
             panic!("Database needs to be set");
@@ -97,14 +103,14 @@ impl<'a, DB: DatabaseRef> EVM<DB> {
     }
 
     /// Execute transaction with given inspector, without wring to DB. Return change state.
-    pub fn inspect_ref<INSP: Inspector<RefDBWrapper<'a, DB::Error>>>(
+    pub fn inspect_ref<INSP: Inspector<RefDBWrapper<'a, DB::Error>, USE_GAS>>(
         &'a self,
         mut inspector: INSP,
     ) -> (ExecutionResult, State) {
         if let Some(db) = self.db.as_ref() {
             let mut db = RefDBWrapper::new(db);
             let db = &mut db;
-            let out = evm_inner::<RefDBWrapper<DB::Error>, true>(
+            let out = evm_inner::<RefDBWrapper<DB::Error>, true, USE_GAS>(
                 &mut self.env.clone(),
                 db,
                 &mut inspector,
@@ -117,7 +123,7 @@ impl<'a, DB: DatabaseRef> EVM<DB> {
     }
 }
 
-impl<DB> EVM<DB> {
+impl<DB, const USE_GAS: bool> EVM<DB, USE_GAS> {
     pub fn new() -> Self {
         Self {
             env: Env::default(),
@@ -140,7 +146,7 @@ impl<DB> EVM<DB> {
 
 macro_rules! create_evm {
     ($spec:ident, $db:ident,$env:ident,$inspector:ident) => {
-        Box::new(EVMImpl::<'a, $spec, DB, INSPECT>::new(
+        Box::new(EVMImpl::<'a, $spec, DB, INSPECT, USE_GAS>::new(
             $db,
             $env,
             $inspector,
@@ -149,10 +155,10 @@ macro_rules! create_evm {
     };
 }
 
-pub fn evm_inner<'a, DB: Database, const INSPECT: bool>(
+pub fn evm_inner<'a, DB: Database, const INSPECT: bool, const USE_GAS: bool>(
     env: &'a mut Env,
     db: &'a mut DB,
-    insp: &'a mut dyn Inspector<DB>,
+    insp: &'a mut dyn Inspector<DB, USE_GAS>,
 ) -> Box<dyn Transact + 'a> {
     use specification::*;
     match env.cfg.spec_id {

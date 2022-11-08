@@ -35,7 +35,7 @@ pub fn exp(op1: U256, op2: U256) -> U256 {
     op1.pow(op2)
 }
 
-pub fn eval_exp<SPEC: Spec>(interp: &mut Interpreter) -> Return {
+pub fn eval_exp<SPEC: Spec, const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     pop!(interp, op1, op2);
     gas_or_fail!(interp, gas::exp_cost::<SPEC>(op2));
     let ret = exp(op1, op2);

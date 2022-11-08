@@ -31,7 +31,7 @@ macro_rules! console_log {
 /// Wrapper around revm with InMemoryDB
 #[wasm_bindgen]
 pub struct EVM {
-    revm: rEVM<InMemoryDB>,
+    revm: rEVM<InMemoryDB, true>,
 }
 
 impl Default for EVM {

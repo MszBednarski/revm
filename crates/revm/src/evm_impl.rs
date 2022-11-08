@@ -19,17 +19,17 @@ use primitive_types::{H160, H256};
 use revm_precompiles::{Precompile, PrecompileOutput, Precompiles};
 use ruint::aliases::U256;
 
-pub struct EVMData<'a, DB: Database> {
+pub struct EVMData<'a, DB: Database, const USE_GAS: bool> {
     pub env: &'a mut Env,
     pub journaled_state: JournaledState,
     pub db: &'a mut DB,
     pub error: Option<DB::Error>,
 }
 
-pub struct EVMImpl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> {
-    data: EVMData<'a, DB>,
+pub struct EVMImpl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool, const USE_GAS: bool> {
+    data: EVMData<'a, DB, USE_GAS>,
     precompiles: Precompiles,
-    inspector: &'a mut dyn Inspector<DB>,
+    inspector: &'a mut dyn Inspector<DB, USE_GAS>,
     _phantomdata: PhantomData<GSPEC>,
 }
 
@@ -39,8 +39,8 @@ pub trait Transact {
     fn transact(&mut self) -> (ExecutionResult, State);
 }
 
-impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> Transact
-    for EVMImpl<'a, GSPEC, DB, INSPECT>
+impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool, const USE_GAS: bool> Transact
+    for EVMImpl<'a, GSPEC, DB, INSPECT, USE_GAS>
 {
     fn transact(&mut self) -> (ExecutionResult, State) {
         let caller = self.data.env.tx.caller;
@@ -208,11 +208,13 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> Transact
     }
 }
 
-impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, INSPECT> {
+impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool, const USE_GAS: bool>
+    EVMImpl<'a, GSPEC, DB, INSPECT, USE_GAS>
+{
     pub fn new(
         db: &'a mut DB,
         env: &'a mut Env,
-        inspector: &'a mut dyn Inspector<DB>,
+        inspector: &'a mut dyn Inspector<DB, USE_GAS>,
         precompiles: Precompiles,
     ) -> Self {
         let journaled_state = if GSPEC::enabled(SpecId::SPURIOUS_DRAGON) {
@@ -691,17 +693,22 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
     }
 }
 
-impl<'a, GSPEC: Spec, DB: Database + 'a, const INSPECT: bool> Host
-    for EVMImpl<'a, GSPEC, DB, INSPECT>
+impl<'a, GSPEC: Spec, DB: Database + 'a, const INSPECT: bool, const USE_GAS: bool> Host<USE_GAS>
+    for EVMImpl<'a, GSPEC, DB, INSPECT, USE_GAS>
 {
     const INSPECT: bool = INSPECT;
     type DB = DB;
 
-    fn step(&mut self, interp: &mut Interpreter, is_static: bool) -> Return {
+    fn step(&mut self, interp: &mut Interpreter<USE_GAS>, is_static: bool) -> Return {
         self.inspector.step(interp, &mut self.data, is_static)
     }
 
-    fn step_end(&mut self, interp: &mut Interpreter, is_static: bool, ret: Return) -> Return {
+    fn step_end(
+        &mut self,
+        interp: &mut Interpreter<USE_GAS>,
+        is_static: bool,
+        ret: Return,
+    ) -> Return {
         self.inspector
             .step_end(interp, &mut self.data, is_static, ret)
     }
@@ -852,13 +859,18 @@ pub fn create2_address(caller: H160, code_hash: H256, salt: U256) -> H160 {
 }
 
 /// EVM context host.
-pub trait Host {
+pub trait Host<const USE_GAS: bool> {
     const INSPECT: bool;
 
     type DB: Database;
 
-    fn step(&mut self, interp: &mut Interpreter, is_static: bool) -> Return;
-    fn step_end(&mut self, interp: &mut Interpreter, is_static: bool, ret: Return) -> Return;
+    fn step(&mut self, interp: &mut Interpreter<USE_GAS>, is_static: bool) -> Return;
+    fn step_end(
+        &mut self,
+        interp: &mut Interpreter<USE_GAS>,
+        is_static: bool,
+        ret: Return,
+    ) -> Return;
 
     fn env(&mut self) -> &mut Env;
 

@@ -10,7 +10,7 @@ pub use stack::Stack;
 
 use crate::{
     instructions::{eval, Return},
-    Gas, Host, Spec, USE_GAS,
+    Gas, Host, Spec,
 };
 use bytes::Bytes;
 use core::ops::Range;
@@ -18,7 +18,7 @@ use core::ops::Range;
 pub const STACK_LIMIT: u64 = 1024;
 pub const CALL_STACK_LIMIT: u64 = 1024;
 
-pub struct Interpreter {
+pub struct Interpreter<const USE_GAS: bool> {
     /// Contract information and invoking data
     pub contract: Contract,
     /// Instruction pointer.
@@ -38,7 +38,7 @@ pub struct Interpreter {
     pub memory_limit: u64,
 }
 
-impl Interpreter {
+impl<const USE_GAS: bool> Interpreter<USE_GAS> {
     pub fn current_opcode(&self) -> u8 {
         unsafe { *self.instruction_pointer }
     }
@@ -106,7 +106,7 @@ impl Interpreter {
     }
 
     /// loop steps until we are finished with execution
-    pub fn run<H: Host, SPEC: Spec>(&mut self, host: &mut H) -> Return {
+    pub fn run<H: Host<USE_GAS>, SPEC: Spec>(&mut self, host: &mut H) -> Return {
         //let timer = std::time::Instant::now();
         let mut ret = Return::Continue;
         // add first gas_block
@@ -126,7 +126,7 @@ impl Interpreter {
             // byte instruction is STOP so we are safe to just increment program_counter bcs on last instruction
             // it will do noop and just stop execution of this contract
             self.instruction_pointer = unsafe { self.instruction_pointer.offset(1) };
-            ret = eval::<H, SPEC>(opcode, self, host);
+            ret = eval::<H, SPEC, USE_GAS>(opcode, self, host);
 
             if H::INSPECT {
                 let ret = host.step_end(self, SPEC::IS_STATIC_CALL, ret);

@@ -1,7 +1,7 @@
 use crate::{gas, interpreter::Interpreter, Return, Spec, SpecId::*};
 use ruint::aliases::U256;
 
-pub fn jump(interp: &mut Interpreter) -> Return {
+pub fn jump<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::MID);
     pop!(interp, dest);
     let dest = as_usize_or_fail!(dest, Return::InvalidJump);
@@ -15,7 +15,7 @@ pub fn jump(interp: &mut Interpreter) -> Return {
     }
 }
 
-pub fn jumpi(interp: &mut Interpreter) -> Return {
+pub fn jumpi<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::HIGH);
     pop!(interp, dest, value);
     if value != U256::ZERO {
@@ -34,18 +34,18 @@ pub fn jumpi(interp: &mut Interpreter) -> Return {
     }
 }
 
-pub fn jumpdest(interp: &mut Interpreter) -> Return {
+pub fn jumpdest<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     gas!(interp, gas::JUMPDEST);
     interp.add_next_gas_block(interp.program_counter() - 1)
 }
 
-pub fn pc(interp: &mut Interpreter) -> Return {
+pub fn pc<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // gas!(interp, gas::BASE);
     push!(interp, U256::from(interp.program_counter() - 1));
     Return::Continue
 }
 
-pub fn ret(interp: &mut Interpreter) -> Return {
+pub fn ret<const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // zero gas cost gas!(interp,gas::ZERO);
     pop!(interp, start, len);
     let len = as_usize_or_fail!(len, Return::OutOfGas);
@@ -59,7 +59,7 @@ pub fn ret(interp: &mut Interpreter) -> Return {
     Return::Return
 }
 
-pub fn revert<SPEC: Spec>(interp: &mut Interpreter) -> Return {
+pub fn revert<SPEC: Spec, const USE_GAS: bool>(interp: &mut Interpreter<USE_GAS>) -> Return {
     // zero gas cost gas!(interp,gas::ZERO);
     // EIP-140: REVERT instruction
     check!(SPEC::enabled(BYZANTIUM));
