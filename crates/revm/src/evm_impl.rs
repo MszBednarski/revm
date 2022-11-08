@@ -136,7 +136,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> Transact
 
         // record all as cost;
         let gas_limit = gas.remaining();
-        if crate::USE_GAS {
+        if USE_GAS {
             gas.record_cost(gas_limit);
         }
 
@@ -181,7 +181,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> Transact
             }
         };
 
-        if crate::USE_GAS {
+        if USE_GAS {
             match exit_reason {
                 return_ok!() => {
                     gas.erase_cost(ret_gas.remaining());
@@ -239,7 +239,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         gas: &Gas,
     ) -> (Map<H160, Account>, Vec<Log>, u64, u64) {
         let coinbase = self.data.env.block.coinbase;
-        let (gas_used, gas_refunded) = if crate::USE_GAS {
+        let (gas_used, gas_refunded) = if USE_GAS {
             let effective_gas_price = self.data.env.effective_gas_price();
             let basefee = self.data.env.block.basefee;
             let max_refund_quotient = if SPEC::enabled(LONDON) { 5 } else { 2 }; // EIP-3529: Reduction in refunds
@@ -312,7 +312,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         let is_create = matches!(self.data.env.tx.transact_to, TransactTo::Create(_));
         let input = &self.data.env.tx.data;
 
-        if crate::USE_GAS {
+        if USE_GAS {
             let zero_data_len = input.iter().filter(|v| **v == 0).count() as u64;
             let non_zero_data_len = input.len() as u64 - zero_data_len;
             let (accessed_accounts, accessed_slots) = {
@@ -501,7 +501,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
                     self.data.journaled_state.checkpoint_revert(checkpoint);
                     return (Return::CreateContractLimit, ret, interp.gas, b);
                 }
-                if crate::USE_GAS {
+                if USE_GAS {
                     let gas_for_code = bytes.len() as u64 * crate::gas::CODEDEPOSIT;
                     if !interp.gas.record_cost(gas_for_code) {
                         // record code deposit gas cost and check if we are out of gas.
@@ -627,7 +627,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
             };
             match out {
                 Ok(PrecompileOutput { output, cost, logs }) => {
-                    if !crate::USE_GAS || gas.record_cost(cost) {
+                    if !USE_GAS || gas.record_cost(cost) {
                         logs.into_iter().for_each(|l| {
                             self.data.journaled_state.log(Log {
                                 address: l.address,

@@ -10,7 +10,7 @@ macro_rules! check {
 
 macro_rules! gas {
     ($interp:expr, $gas:expr) => {
-        if crate::USE_GAS {
+        if USE_GAS {
             if !$interp.gas.record_cost(($gas)) {
                 return Return::OutOfGas;
             }
@@ -20,7 +20,7 @@ macro_rules! gas {
 
 macro_rules! refund {
     ($interp:expr, $gas:expr) => {{
-        if crate::USE_GAS {
+        if USE_GAS {
             $interp.gas.gas_refund($gas);
         }
     }};
@@ -28,7 +28,7 @@ macro_rules! refund {
 
 macro_rules! gas_or_fail {
     ($interp:expr, $gas:expr) => {
-        if crate::USE_GAS {
+        if USE_GAS {
             match $gas {
                 Some(gas_used) => gas!($interp, gas_used),
                 None => return Return::OutOfGas,
@@ -50,7 +50,7 @@ macro_rules! memory_resize {
             }
 
             if new_size > $interp.memory.len() {
-                if crate::USE_GAS {
+                if USE_GAS {
                     let num_bytes = new_size / 32;
                     if !$interp.gas.record_memory(crate::gas::memory_gas(num_bytes)) {
                         return Return::OutOfGas;
